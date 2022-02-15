@@ -29,7 +29,7 @@
         <div class="flex">
           <div class="max-w-xs">
             <label for="wallet" class="block text-sm font-medium text-gray-700"
-              >Тикер{{ ticker }}</label
+              >Тикер</label
             >
             <div class="mt-1 relative rounded-md shadow-md">
               <input
@@ -42,28 +42,30 @@
                 placeholder="Например DOGE"
               />
             </div>
-            <div
-              class="flex bg-white shadow-md p-1 rounded-md shadow-md flex-wrap"
-            >
+            <div class="flex bg-white shadow-md p-1 rounded-md flex-wrap">
               <span
+                @click="ticker = coins.coin1"
                 class="inline-flex items-center px-2 m-1 rounded-md text-xs font-medium bg-gray-300 text-gray-800 cursor-pointer"
               >
-                BTC
+                {{ coins.coin1 }}
               </span>
               <span
+                @click="ticker = coins.coin2"
                 class="inline-flex items-center px-2 m-1 rounded-md text-xs font-medium bg-gray-300 text-gray-800 cursor-pointer"
               >
-                DOGE
+                {{ coins.coin2 }}
               </span>
               <span
+                @click="ticker = coins.coin3"
                 class="inline-flex items-center px-2 m-1 rounded-md text-xs font-medium bg-gray-300 text-gray-800 cursor-pointer"
               >
-                BCH
+                {{ coins.coin3 }}
               </span>
               <span
+                @click="ticker = coins.coin4"
                 class="inline-flex items-center px-2 m-1 rounded-md text-xs font-medium bg-gray-300 text-gray-800 cursor-pointer"
               >
-                CHD
+                {{ coins.coin4 }}
               </span>
             </div>
             <div class="text-sm text-red-600">Такой тикер уже добавлен</div>
@@ -190,7 +192,26 @@ export default {
       tickers: [],
       sel: null,
       graph: [],
+      coins: {
+        coin1: "BTC",
+        coin2: "DOGE",
+        coin3: "BCH",
+        coin4: "CHD",
+      },
+      fullNames: [],
     };
+  },
+
+  mounted: function () {
+    fetch(
+      `https://min-api.cryptocompare.com/data/all/coinlist?summary=true&api_key=a4df464b7b0a8db2824eb1e5cb4eefb1b3c7765fa8174065283edc3bc23cc5b9`
+    )
+      .then((response) => response.json())
+      .then(dt => dt.Data = this.fullName)
+      for(let key in this.fullName) {
+        console.log(this.fullName[key]);
+        
+      }
   },
 
   methods: {
@@ -199,6 +220,10 @@ export default {
         name: this.ticker,
         price: "-",
       };
+      console.log(this.ticker);
+      console.log(this.tickers);
+      console.log(this.sel);
+      console.log(this.graph);
 
       this.tickers.push(currentTicker);
       setInterval(async () => {
@@ -206,6 +231,8 @@ export default {
           `https://min-api.cryptocompare.com/data/price?fsym=${currentTicker.name}&tsyms=USD&api_key=a4df464b7b0a8db2824eb1e5cb4eefb1b3c7765fa8174065283edc3bc23cc5b9`
         );
         const data = await f.json();
+        console.log(data);
+
         this.tickers.find((t) => t.name === currentTicker.name).price =
           data.USD > 1 ? data.USD.toFixed(2) : data.USD.toPrecision(2);
 
@@ -218,7 +245,7 @@ export default {
 
     select(ticker) {
       this.sel = ticker;
-      this.graph = [] 
+      this.graph = [];
     },
 
     handleDelete(tickerToRemove) {
@@ -235,5 +262,3 @@ export default {
   },
 };
 </script>
-
-<style src="./app.css"></style>
