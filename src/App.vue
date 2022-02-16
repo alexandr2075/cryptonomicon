@@ -44,28 +44,24 @@
             </div>
             <div class="flex bg-white shadow-md p-1 rounded-md flex-wrap">
               <span
-                @click="ticker = coins.coin1"
                 class="inline-flex items-center px-2 m-1 rounded-md text-xs font-medium bg-gray-300 text-gray-800 cursor-pointer"
               >
-                {{ coins.coin1 }}
+                2
               </span>
               <span
-                @click="ticker = coins.coin2"
                 class="inline-flex items-center px-2 m-1 rounded-md text-xs font-medium bg-gray-300 text-gray-800 cursor-pointer"
               >
-                {{ coins.coin2 }}
+                3
               </span>
               <span
-                @click="ticker = coins.coin3"
                 class="inline-flex items-center px-2 m-1 rounded-md text-xs font-medium bg-gray-300 text-gray-800 cursor-pointer"
               >
-                {{ coins.coin3 }}
+                4
               </span>
               <span
-                @click="ticker = coins.coin4"
                 class="inline-flex items-center px-2 m-1 rounded-md text-xs font-medium bg-gray-300 text-gray-800 cursor-pointer"
               >
-                {{ coins.coin4 }}
+                1
               </span>
             </div>
             <div class="text-sm text-red-600">Такой тикер уже добавлен</div>
@@ -94,11 +90,28 @@
       </section>
 
       <template v-if="tickers.length">
+        <div>
+          <button
+            class="my-4 mx-2 inline-flex items-center py-2 px-4 border border-transparent shadow-sm text-sm leading-4 font-medium rounded-full text-white bg-gray-600 hover:bg-gray-700 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+            v-if="page > 1"
+            @click="page = page - 1"
+          >
+            Назад
+          </button>
+          <button
+            class="my-4 mx-2 inline-flex items-center py-2 px-4 border border-transparent shadow-sm text-sm leading-4 font-medium rounded-full text-white bg-gray-600 hover:bg-gray-700 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+            @click="page = page + 1"
+            v-if="hasNextPage"
+          >
+            Вперёд
+          </button>
+          <div>Фильтр: <input v-model="filter"/></div>
+        </div>
         <hr class="w-full border-t border-gray-600 my-4" />
 
         <dl class="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-3">
           <div
-            v-for="t in tickers"
+            v-for="t in filteredTickers()"
             v-bind:key="t.name"
             @click="select(t)"
             :class="{
@@ -192,55 +205,74 @@ export default {
       tickers: [],
       sel: null,
       graph: [],
-      coins: {
-        coin1: "BTC",
-        coin2: "DOGE",
-        coin3: "BCH",
-        coin4: "CHD",
-      },
-      fullNames: [],
+      page: 1,
+      filter: "",
+      hasNextPage: true,
     };
   },
 
-  mounted: function () {
-    fetch(
-      `https://min-api.cryptocompare.com/data/all/coinlist?summary=true&api_key=a4df464b7b0a8db2824eb1e5cb4eefb1b3c7765fa8174065283edc3bc23cc5b9`
+  created() {
+    const windowData = Object.fromEntries(
+      new URL(window.location).searchParams.entries()
     )
-      .then((response) => response.json())
-      .then(dt => dt.Data = this.fullName)
-      for(let key in this.fullName) {
-        console.log(this.fullName[key]);
-        
-      }
+
+    if (windowData.filter) {
+      this.filter = windowData.filter
+    }
+
+    if (windowData.page) {
+      this.page = windowData.page
+    }
+
+    const tickersData = localStorage.getItem("cryptonomicon-list");
+
+    if (tickersData) {
+      this.tickers = JSON.parse(tickersData);
+      this.tickers.forEach((ticker) => {
+        this.subscribeToUpdate(ticker.name);
+      });
+    }
   },
 
   methods: {
+    filteredTickers() {
+      const start = (this.page - 1) * 6;
+      const end = this.page * 6;
+
+      this.hasNextPage;
+      return this.tickers
+        .filter((ticker) => ticker.name.includes(this.filter))
+        .slice(start, end);
+    },
+
+    subscribeToUpdate(tickerName) {
+      setInterval(async () => {
+        const f = await fetch(
+          `https://min-api.cryptocompare.com/data/price?fsym=${tickerName}&tsyms=USD&api_key=a4df464b7b0a8db2824eb1e5cb4eefb1b3c7765fa8174065283edc3bc23cc5b9`
+        );
+        const data = await f.json();
+
+        this.tickers.find((t) => t.name === tickerName).price =
+          data.USD > 1 ? data.USD.toFixed(2) : data.USD.toPrecision(2);
+
+        if (this.sel?.name === tickerName) {
+          this.graph.push(data.USD);
+        }
+      }, 3000);
+      this.ticker = "";
+    },
+
     add() {
       const currentTicker = {
         name: this.ticker,
         price: "-",
       };
-      console.log(this.ticker);
-      console.log(this.tickers);
-      console.log(this.sel);
-      console.log(this.graph);
 
       this.tickers.push(currentTicker);
-      setInterval(async () => {
-        const f = await fetch(
-          `https://min-api.cryptocompare.com/data/price?fsym=${currentTicker.name}&tsyms=USD&api_key=a4df464b7b0a8db2824eb1e5cb4eefb1b3c7765fa8174065283edc3bc23cc5b9`
-        );
-        const data = await f.json();
-        console.log(data);
+      this.filter = "";
 
-        this.tickers.find((t) => t.name === currentTicker.name).price =
-          data.USD > 1 ? data.USD.toFixed(2) : data.USD.toPrecision(2);
-
-        if (this.sel?.name === currentTicker.name) {
-          this.graph.push(data.USD);
-        }
-      }, 3000);
-      this.ticker = "";
+      localStorage.setItem("criptonomicon-list", JSON.stringify(this.tickers));
+      this.subscribeToUpdate(currentTicker.name);
     },
 
     select(ticker) {
@@ -260,5 +292,20 @@ export default {
       );
     },
   },
+
+  watch: {
+    filter() {
+      this.page = 1
+      window.history.pushState(
+        null, document.title,`${window.location.pathname}?filter=${this.filter}&page=${this.page}`
+      )
+    },
+    page() {
+      window.history.pushState(
+        null, document.title,`${window.location.pathname}?filter=${this.filter}&page=${this.page}`
+      )
+    },
+  },
+
 };
 </script>
